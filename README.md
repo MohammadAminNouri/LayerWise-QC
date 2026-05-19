@@ -1,4 +1,3 @@
-[README_final_clean.md](https://github.com/user-attachments/files/28009402/README_final_clean.md)# LayerWise-QC
 
 ![CI](https://github.com/MohammadAminNouri/LayerWise-QC/actions/workflows/ci.yml/badge.svg)
 

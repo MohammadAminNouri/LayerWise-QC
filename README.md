@@ -1,4 +1,4 @@
-[README_polished_LayerWise_QC.md](https://github.com/user-attachments/files/28009209/README_polished_LayerWise_QC.md)# LayerWise-QC
+[README_final_clean.md](https://github.com/user-attachments/files/28009402/README_final_clean.md)# LayerWise-QC
 
 ![CI](https://github.com/MohammadAminNouri/LayerWise-QC/actions/workflows/ci.yml/badge.svg)
 
@@ -7,15 +7,15 @@ LayerWise-QC is a small research prototype for in-situ quality monitoring in las
 Live app: https://layerwise-qc-nouri.streamlit.app/  
 Repository: https://github.com/MohammadAminNouri/LayerWise-QC
 
-## What it is trying to do
+## What it does
 
-During laser powder-bed fusion, every layer is affected by the energy input and by the condition of the powder bed and melt zone. LayerWise-QC puts those signals into one simple workflow:
+During laser powder-bed fusion, each printed layer is affected by the energy input, the powder-bed condition, and the melt-zone response. LayerWise-QC puts these pieces into one simple workflow:
 
 ```text
 laser parameters + layer image channels -> sensor scores -> fused layer-quality estimate
 ```
 
-The current version is built for demonstration and development. It uses generated sample images so the dashboard and scripts can run without private laboratory data. The same structure can later be connected to real optical tomography, melt-pool monitoring, or powder-bed imaging data through a CSV manifest.
+The current version is built for demonstration and development. It uses generated sample patches so the dashboard and scripts can run without private laboratory data. The same structure can later be connected to real optical tomography, melt-pool monitoring, or powder-bed imaging data through a CSV manifest.
 
 ## Dashboard
 
@@ -27,7 +27,7 @@ streamlit run app/streamlit_app.py
 
 The dashboard is the main entry point. It lets the user change laser power, scan speed, hatch distance, layer thickness, powder uniformity, heat-memory, and fusion weights. Every change updates the volumetric energy density, the sensor-channel scores, and the final risk interpretation.
 
-The dashboard is useful because it shows the relation between process settings and the quality estimate in one place. For example, lowering scan speed increases energy input, while increasing scan speed reduces energy input. Poorer powder uniformity increases the powder-bed risk contribution. Changing fusion weights shows how much the final output depends on the optical channel or the second sensor channel.
+The dashboard is useful because it shows the relation between process settings and the quality estimate in one place. Lowering scan speed increases energy input. Increasing scan speed reduces energy input. Poorer powder uniformity increases the powder-bed risk contribution. Changing fusion weights shows how much the final output depends on the optical channel or on the second sensor channel.
 
 ## Software structure
 
@@ -142,7 +142,13 @@ sample_id,layer,specimen_id,class_idx,class_name,ot_path,mpm_path,pbi_path,laser
 Minimum required columns for one channel are:
 
 ```text
-sample_id,class_idx,class_name,<modality>_path
+sample_id,class_idx,class_name,ot_path
+```
+
+or:
+
+```text
+sample_id,class_idx,class_name,pbi_path
 ```
 
 The demo labels are:

@@ -204,9 +204,9 @@ Relative paths are resolved from the manifest folder by default. Absolute paths 
 
 The names are kept close to the experimental logic, but they can be renamed if the real dataset uses labels such as `good`, `recoater_defect`, `lack_of_fusion`, `overheated`, or `porosity`.
 
-## How this is different from only copying the SIMILAR works
+## How this is different from only copying the earlier work
 
-The similar projects are treated as the starting point: two sensing channels, modality-specific CNNs, and late fusion. This prototype adds a few practical extensions:
+The earlier work is treated as the starting point: two sensing channels, modality-specific CNNs, and late fusion. This prototype adds a few practical extensions:
 
 - PBI is implemented as a second channel next to MPM.
 - The manifest can hold OT + MPM + PBI at the same time.

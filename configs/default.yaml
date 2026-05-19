@@ -1,0 +1,99 @@
+project:
+  name: am_insitu_quality_monitor
+  seed: 42
+
+experiment:
+  material: Ti-6Al-4V
+  process: laser_based_powder_bed_fusion
+  machine_example: EOS M290
+  parameter_set_example: EOS Ti64_SpeedM291 1.10
+  shielding_gas_example: argon
+
+sensors:
+  ot:
+    name: optical_tomography
+    role: broad layer/build-plate thermal signature
+    wavelength_nm: 900
+    bandwidth_fwhm_nm: 25
+    fps: 10
+    spatial_resolution_um_per_px: 125
+    patch_size_hw: [119, 79]
+  mpm:
+    name: meltpool_monitoring
+    role: local melt-pool emission signature
+    wavelength_nm_range: [400, 900]
+    sampling_rate_hz: 60000
+    spatial_resolution_um_per_px: 100
+    patch_size_hw: [152, 103]
+  pbi:
+    name: powder_bed_imaging
+    role: recoating, powder spreading and surface-state signature
+    patch_size_hw: [152, 103]
+
+process_parameters:
+  hatch_distance_mm: 0.12
+  layer_thickness_mm: 0.06
+  valid_layers_after_trimming: 172
+  raw_layers_reference: 210
+  removed_initial_layers_reference: 10
+  removed_final_layers_reference: 28
+  classes:
+    standard:
+      class_idx: 0
+      laser_power_w: 340
+      scan_speed_mm_s: 1250
+      ved_j_mm3: 37.78
+    delta_minus_30_ved:
+      class_idx: 1
+      laser_power_w: 238
+      scan_speed_mm_s: 1250
+      ved_j_mm3: 26.44
+      expected_issue: lack_of_fusion_risk
+    delta_plus_30_ved:
+      class_idx: 2
+      laser_power_w: 370
+      scan_speed_mm_s: 1046.38
+      ved_j_mm3: 49.11
+      expected_issue: keyhole_or_overheating_risk
+
+training:
+  architecture: resnet18
+  pretrained: true
+  num_classes: 3
+  epochs: 30
+  batch_size: 32
+  learning_rate: 0.001
+  optimizer: Adam
+  loss: cross_entropy
+  split: [0.70, 0.15, 0.15]
+  scheduler:
+    type: StepLR
+    step_at_epoch_fraction: 0.5
+    gamma: 0.5
+  weighted_sampler: true
+  validation_metric: matthews_corrcoef_moving_average
+  moving_average_window: 3
+
+fusion:
+  strategy: late_fusion_soft_voting
+  first_modality: ot
+  second_modality_options: [mpm, pbi]
+  default_weights:
+    ot: 0.5
+    second: 0.5
+
+metrics:
+  - balanced_accuracy
+  - matthews_corrcoef
+  - weighted_f1
+  - per_class_precision
+  - per_class_recall
+  - confusion_matrix
+
+explainability:
+  method: Grad-CAM
+  target_layer: resnet.layer4[-1]
+
+app:
+  command: streamlit run app/streamlit_app.py
+  demo_samples: data/demo_samples/manifest.csv

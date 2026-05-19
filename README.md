@@ -1,3 +1,4 @@
+![CI](https://github.com/MohammadAminNouri/LayerWise-QC/actions/workflows/ci.yml/badge.svg)
 # In-situ AM quality monitor
 
 A working prototype for layer-wise quality monitoring in laser powder-bed fusion. It was made to test a similar line of work to the OT/MPM defect-detection study, but the code is kept a bit broader: it supports **OT + MPM** and **OT + powder-bed imaging (PBI)**, and it also has a small live dashboard for explaining the idea without needing the full lab dataset.

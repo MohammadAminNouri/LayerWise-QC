@@ -1,13 +1,8 @@
-"""Layer-to-layer feed-forward control recommendations for LayerWise-QC.
+"""Layer-to-layer feed-forward advisory control for LayerWise-QC.
 
-This module does not directly control a machine. It produces conservative,
-explainable recommendations for the next layer based on:
-- current process inputs,
-- fused defect-risk scores,
-- optional sensor descriptors.
-
-The goal is to turn the dashboard from passive monitoring into an advisory
-quality-control prototype.
+The functions in this file do not control a machine. They produce conservative,
+human-readable recommendations for the next layer based on the current fused risk
+state and sensor descriptors.
 """
 
 from __future__ import annotations
@@ -36,7 +31,8 @@ class FeedForwardRecommendation:
     caution: str
 
 
-def _cap_relative_change(current: float, target: float, max_fraction: float) -> float:
+def cap_relative_change(current: float, target: float, max_fraction: float) -> float:
+    """Limit a recommendation to a conservative relative step."""
     lower = current * (1.0 - max_fraction)
     upper = current * (1.0 + max_fraction)
     return float(min(max(target, lower), upper))
@@ -51,13 +47,10 @@ def recommend_feedforward_control(
     max_power_step_fraction: float = 0.07,
     max_speed_step_fraction: float = 0.07,
 ) -> FeedForwardRecommendation:
-    """Recommend a conservative next-layer correction.
-
-    The correction is intentionally limited to avoid unrealistic jumps.
-    """
+    """Recommend a conservative next-layer correction."""
 
     features = compute_physics_features(inputs, standard_ved_j_mm3=standard_ved_j_mm3)
-    nved = features["normalized_ved"]
+    normalized_ved = features["normalized_ved"]
 
     p_stable = float(fused_scores.get("standard", 0.0))
     p_low = float(fused_scores.get("delta_minus_30_ved", 0.0))
@@ -67,13 +60,12 @@ def recommend_feedforward_control(
     current_power = float(inputs.laser_power_w)
     current_speed = float(inputs.scan_speed_mm_s)
 
-    # Default: hold process.
     target_power = current_power
     target_speed = current_speed
     risk_mode = "stable"
     action = "hold parameters"
     rationale = "The fused output is closest to the stable process window."
-    caution = "Continue monitoring; no automatic machine command is issued."
+    caution = "Continue monitoring. No automatic machine command is issued."
 
     powder_warning = False
     if sensor_descriptors:
@@ -86,7 +78,7 @@ def recommend_feedforward_control(
 
     if powder_warning and p_low > 0.30:
         risk_mode = "powder-bed / recoating risk"
-        action = "flag powder-bed issue before changing laser parameters"
+        action = "inspect powder-bed condition before changing laser parameters"
         rationale = (
             "The low-energy risk is accompanied by powder-bed descriptors. "
             "This suggests that laser correction alone may hide a spreading or recoating problem."
@@ -96,9 +88,10 @@ def recommend_feedforward_control(
             "only by increasing laser power."
         )
 
-    elif p_low > max(p_high, p_stable) or (p_low > 0.40 and nved < 0.92):
+    elif p_low > max(p_high, p_stable) or (p_low > 0.40 and normalized_ved < 0.92):
         risk_mode = "low-energy / lack-of-fusion risk"
         action = "increase next-layer energy input"
+
         target_ved = min(standard_ved_j_mm3, inputs.ved * 1.12)
 
         raw_power_target = target_ved * (
@@ -106,15 +99,14 @@ def recommend_feedforward_control(
             * inputs.hatch_distance_mm
             * inputs.layer_thickness_mm
         )
-        target_power = _cap_relative_change(
+        target_power = cap_relative_change(
             current_power,
             raw_power_target,
             max_power_step_fraction,
         )
 
-        # Alternative lever: reduce scan speed toward equivalent VED correction.
         raw_speed_target = current_speed * (inputs.ved / max(target_ved, 1e-9))
-        target_speed = _cap_relative_change(
+        target_speed = cap_relative_change(
             current_speed,
             raw_speed_target,
             max_speed_step_fraction,
@@ -125,13 +117,14 @@ def recommend_feedforward_control(
             "A conservative increase in energy density is recommended for the next layer."
         )
         caution = (
-            "Use either power increase or speed reduction, not both at full magnitude, "
-            "unless validated experimentally."
+            "Use either the power increase or the scan-speed reduction, not both at full magnitude, "
+            "unless experimentally validated."
         )
 
-    elif p_high > max(p_low, p_stable) or (p_high > 0.40 and nved > 1.08):
+    elif p_high > max(p_low, p_stable) or (p_high > 0.40 and normalized_ved > 1.08):
         risk_mode = "high-energy / keyhole-spatter risk"
         action = "decrease next-layer energy input"
+
         target_ved = max(standard_ved_j_mm3, inputs.ved * 0.88)
 
         raw_power_target = target_ved * (
@@ -139,14 +132,14 @@ def recommend_feedforward_control(
             * inputs.hatch_distance_mm
             * inputs.layer_thickness_mm
         )
-        target_power = _cap_relative_change(
+        target_power = cap_relative_change(
             current_power,
             raw_power_target,
             max_power_step_fraction,
         )
 
         raw_speed_target = current_speed * (inputs.ved / max(target_ved, 1e-9))
-        target_speed = _cap_relative_change(
+        target_speed = cap_relative_change(
             current_speed,
             raw_speed_target,
             max_speed_step_fraction,
@@ -157,8 +150,8 @@ def recommend_feedforward_control(
             "A conservative reduction in energy density is recommended for the next layer."
         )
         caution = (
-            "Reducing power is usually cleaner than increasing speed when track stability "
-            "and scan strategy must be preserved."
+            "Reducing power is usually cleaner than increasing speed when scan strategy "
+            "and track stability must be preserved."
         )
 
     confidence = float(min(max(risk_score, 0.0), 1.0))
@@ -179,8 +172,7 @@ def recommend_feedforward_control(
 
 
 def recommendation_to_frame(rec: FeedForwardRecommendation) -> pd.DataFrame:
-    """Convert recommendation to a dataframe for Streamlit."""
-
+    """Convert a feed-forward recommendation to a display table."""
     return pd.DataFrame(
         [
             {"item": "risk mode", "value": rec.risk_mode},

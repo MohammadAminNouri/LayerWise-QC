@@ -1441,7 +1441,207 @@ def _show_validation_roadmap_tab() -> None:
         "and feed-forward advisory control in PBF-LB."
     )
 
+def _show_sample_model_requirements_tab() -> None:
+    st.header("Sample / model needs — what to collect and how to train")
 
+    _guide_card(
+        "Sample and model requirements",
+        "List exactly what must be collected for each LPBF sample and explain the five model types needed for training.",
+        "Printed sample metadata, process parameters, quality labels, sensor files, and extracted features.",
+        "A practical checklist for lab data collection, physics-informed feature building, model training, and validation.",
+        "Start from the required sample table. Then check which model is possible depending on the available data.",
+        "This tab is a planning and training checklist. It does not train the models directly.",
+    )
+
+    st.subheader("1. Minimum number of samples")
+
+    sample_count = pd.DataFrame(
+        [
+            ["Minimum starting dataset", "50–80 samples", "Enough for a first physics-informed baseline and simple pass/fail model."],
+            ["Good project dataset", "100–150 samples", "Better for train/test split, feature importance, and comparing model types."],
+            ["Strong research dataset", "200–300 samples", "Better for DOE coverage, model validation, and publishable-level comparison."],
+            ["Best transferability dataset", "Same samples on two machines or two process windows", "Useful for testing whether the physics-informed model generalizes."],
+        ],
+        columns=["Dataset level", "Recommended amount", "Meaning"],
+    )
+    st.dataframe(sample_count, hide_index=True, use_container_width=True)
+
+    st.info(
+        "For the first real model, the minimum practical target is 50–80 printed samples with process parameters and measured density or porosity."
+    )
+
+    st.subheader("2. Required information for each printed sample")
+
+    sample_inputs = pd.DataFrame(
+        [
+            ["sample_id", "Unique sample name, for example S001", "Required"],
+            ["build_id", "Build/job identifier, for example Build_01", "Required"],
+            ["machine_id", "LPBF machine name or ID", "Required"],
+            ["printing_date", "Date of printing", "Recommended"],
+            ["material", "Material name, for example 316L, Ti64, AlSi10Mg", "Required"],
+            ["powder_batch", "Powder batch or supplier batch number", "Recommended"],
+            ["powder_reuse_number", "How many times the powder was reused", "If available"],
+            ["sample_geometry", "Cube, cylinder, tensile bar, etc.", "Required"],
+            ["sample_position_x", "X-position on the build plate", "Required"],
+            ["sample_position_y", "Y-position on the build plate", "Required"],
+            ["laser_power_W", "Laser power in watts", "Required"],
+            ["scan_speed_mm_s", "Scan speed in mm/s", "Required"],
+            ["hatch_spacing_um", "Hatch spacing in micrometers", "Required"],
+            ["layer_thickness_um", "Layer thickness in micrometers", "Required"],
+            ["spot_size_um", "Laser spot size or beam diameter", "Required"],
+            ["scan_strategy", "Stripe, chessboard, island, rotation angle, contour strategy, etc.", "Required"],
+            ["build_plate_temperature_C", "Build plate or preheating temperature", "If available"],
+            ["oxygen_level_ppm", "Oxygen level during printing", "If available"],
+            ["gas_flow_condition", "Gas flow direction or setting", "If available"],
+            ["measured_density_percent", "Final relative density of the printed sample", "Required"],
+            ["porosity_percent", "Porosity percentage from CT/microscopy/image analysis", "Recommended"],
+            ["measurement_method", "Archimedes, micro-CT, microscopy, image analysis, etc.", "Required"],
+            ["defect_type", "good, lack_of_fusion, keyhole, crack, delamination, failed, unknown", "Recommended"],
+            ["failure_note", "Crack, collapse, delamination, rough surface, recoater issue, etc.", "Required"],
+            ["sensor_file_name", "Pyrometer, OT, MPM, PBI, thermal camera, or layer-image file name", "If available"],
+            ["general_notes", "Any extra observation during printing, removal, cleaning, or inspection", "Recommended"],
+        ],
+        columns=["Column name", "What to record", "Priority"],
+    )
+    st.dataframe(sample_inputs, hide_index=True, use_container_width=True)
+
+    st.subheader("3. Sensor data needed if available")
+
+    sensor_inputs = pd.DataFrame(
+        [
+            ["pyrometer_file", "Raw pyrometer or IR signal file", "Sensor-only and hybrid models"],
+            ["thermal_camera_file", "Thermal camera recording or layer images", "Sensor-only and hybrid models"],
+            ["melt_pool_monitoring_file", "MPM / coaxial melt-pool monitoring file", "Sensor-only and hybrid models"],
+            ["optical_tomography_file", "OT layer-wise thermal/optical emission file", "Sensor-only and hybrid models"],
+            ["powder_bed_image_file", "PBI image file for powder-bed/recoater condition", "Sensor-only and hybrid models"],
+            ["layer_log_file", "Layer-wise machine/process log", "Layer-wise modelling"],
+            ["machine_log_file", "Machine warning, error, oxygen, gas flow, or interruption log", "Data cleaning and failure explanation"],
+            ["thermal_mean", "Average sensor signal", "Extracted feature"],
+            ["thermal_max", "Maximum sensor signal", "Extracted feature"],
+            ["thermal_std", "Thermal fluctuation", "Extracted feature"],
+            ["thermal_iqr", "Interquartile range; melt-pool stability descriptor", "Extracted feature"],
+            ["thermal_mode", "Most frequent thermal value", "Extracted feature"],
+            ["thermal_skewness", "Asymmetry of thermal distribution", "Extracted feature"],
+            ["thermal_kurtosis", "Outlier/sharpness behaviour", "Extracted feature"],
+            ["hotspot_fraction", "Fraction of overheated area", "Extracted feature"],
+            ["streakiness", "Row-wise pattern, useful for powder-bed/recoater problems", "Extracted feature"],
+            ["number_of_anomalous_layers", "Number of suspicious layers in the sample", "Extracted feature"],
+        ],
+        columns=["Sensor item", "Meaning", "Used for"],
+    )
+    st.dataframe(sensor_inputs, hide_index=True, use_container_width=True)
+
+    st.subheader("4. Physics-informed features calculated by the app")
+
+    st.caption(
+        "The lab does not need to manually calculate these. The app can calculate them from the raw process parameters and material properties."
+    )
+
+    physics_inputs = pd.DataFrame(
+        [
+            ["LED", "P / v", "Linear energy density"],
+            ["AED", "P / (v × h)", "Areal energy density"],
+            ["VED", "P / (v × h × t)", "Volumetric energy density"],
+            ["normalized_VED", "η × VED / (ρ × Cp × ΔT)", "Energy normalized by material heating need"],
+            ["hatch_to_spot_ratio", "h / spot_size", "Track overlap indicator"],
+            ["hatch_to_layer_ratio", "h / t", "Hatch spacing relative to layer thickness"],
+            ["spot_to_layer_ratio", "spot_size / t", "Beam size relative to layer thickness"],
+            ["thermal_diffusion_ratio", "α / (v × spot_size)", "Heat diffusion compared with laser movement"],
+            ["heat_accumulation_proxy", "function(VED, heat memory, layer history)", "Risk of accumulated heat"],
+            ["thermal_stability_score", "function(IQR, std, mode)", "Sensor-based melt-pool stability"],
+        ],
+        columns=["Feature", "Formula / source", "Physical meaning"],
+    )
+    st.dataframe(physics_inputs, hide_index=True, use_container_width=True)
+
+    st.subheader("5. Five models to train and what each one needs")
+
+    models = pd.DataFrame(
+        [
+            [
+                "Model 1 — Process-only baseline",
+                "laser_power_W, scan_speed_mm_s, hatch_spacing_um, layer_thickness_um, spot_size_um, scan_strategy",
+                "measured_density_percent or porosity_percent",
+                "Linear Regression, Random Forest, Gradient Boosting, Gaussian Process",
+                "Shows what can be predicted from raw machine settings only. This is the baseline."
+            ],
+            [
+                "Model 2 — Physics-informed model",
+                "LED, AED, VED, normalized_VED, hatch_to_spot_ratio, hatch_to_layer_ratio, spot_to_layer_ratio, thermal_diffusion_ratio",
+                "measured_density_percent or porosity_percent",
+                "Random Forest, Gradient Boosting, Gaussian Process, Symbolic Regression",
+                "More explainable model based on energy input, track overlap, and heat-transfer-related descriptors."
+            ],
+            [
+                "Model 3 — Sensor-only model",
+                "thermal_mean, thermal_max, thermal_std, thermal_iqr, thermal_mode, skewness, kurtosis, hotspot_fraction, streakiness, anomalous_layers",
+                "density, porosity, defect class, or pass/fail label",
+                "Random Forest, XGBoost/Gradient Boosting, SVM, simple CNN later if enough images exist",
+                "In-situ monitoring model. Useful when pyrometry, OT, MPM, PBI, or thermal images are available."
+            ],
+            [
+                "Model 4 — Hybrid physics + sensor model",
+                "process parameters + physics-informed features + sensor descriptors",
+                "density, porosity, defect class, or pass/fail label",
+                "Gradient Boosting, XGBoost, Random Forest, Stacking model, Gaussian Process",
+                "Strongest model because it combines process design, physics meaning, and real monitoring data."
+            ],
+            [
+                "Model 5 — Pass/fail or defect classification model",
+                "process features, physics features, and sensor features if available",
+                "pass/fail or defect_type such as good, lack_of_fusion, keyhole, crack, failed",
+                "Logistic Regression, Random Forest Classifier, SVM, Gradient Boosting Classifier",
+                "Best first classification model for small datasets. Easier than predicting many defect classes."
+            ],
+        ],
+        columns=["Model", "Inputs needed", "Target/output needed", "ML algorithms", "Purpose"],
+    )
+    st.dataframe(models, hide_index=True, use_container_width=True)
+
+    st.subheader("6. ML instruments and tools needed")
+
+    instruments = pd.DataFrame(
+        [
+            ["Clean dataset table", "One CSV/Excel row per sample", "Needed before any model training"],
+            ["Unit checker", "Convert μm to mm where needed and check impossible values", "Prevents wrong VED/feature values"],
+            ["Feature builder", "Automatically calculate LED, AED, VED, normalized VED, ratios, and stability features", "Creates physics-informed inputs"],
+            ["Train/test split", "70/30 split or 80/20 split", "Basic validation"],
+            ["Cross-validation", "5-fold cross-validation, especially for 50–80 samples", "More reliable small-dataset evaluation"],
+            ["Grouped split", "Split by build_id if several samples come from the same build", "Prevents leakage between train and test"],
+            ["Scaler", "StandardScaler or MinMaxScaler", "Needed for SVM, linear models, and Gaussian Process"],
+            ["Missing-value handler", "Drop, fill, or flag missing sensor/material values", "Keeps model training stable"],
+            ["Feature selection", "RFECV, permutation importance, correlation filtering", "Removes weak or duplicate features"],
+            ["Metrics for regression", "R², MAE, RMSE", "Used for density/porosity prediction"],
+            ["Metrics for classification", "Accuracy, precision, recall, F1, confusion matrix, ROC-AUC if binary", "Used for pass/fail or defect classification"],
+            ["Explainability", "SHAP, permutation importance, feature importance", "Explains why the model predicts good or bad quality"],
+            ["Ablation comparison", "Process-only vs physics-only vs sensor-only vs hybrid", "Proves whether physics/sensors improve the model"],
+            ["Model export", "joblib or pickle file", "Allows the trained model to be loaded into the Streamlit app"],
+            ["Prediction interface", "Input fields + feature calculation + trained model output", "Turns the trained model into a usable dashboard tool"],
+        ],
+        columns=["ML instrument/tool", "What it is", "Why it is needed"],
+    )
+    st.dataframe(instruments, hide_index=True, use_container_width=True)
+
+    st.subheader("7. Recommended training order")
+
+    st.markdown(
+        """
+        1. Collect 50–80 samples minimum with process parameters and measured density/porosity.  
+        2. Clean the table and check all units.  
+        3. Calculate physics-informed features: LED, AED, VED, normalized VED, and geometric ratios.  
+        4. Train **Model 1: process-only baseline**.  
+        5. Train **Model 2: physics-informed model**.  
+        6. If sensor data exists, extract thermal descriptors and train **Model 3: sensor-only model**.  
+        7. Combine all features and train **Model 4: hybrid model**.  
+        8. Convert density/porosity into pass/fail labels and train **Model 5: classification model**.  
+        9. Compare all models using R², MAE, RMSE, F1, confusion matrix, and feature importance.  
+        10. Export the best model and connect it back to the LayerWise-QC dashboard.
+        """
+    )
+
+    st.success(
+        "Practical first goal: train the process-only and physics-informed models first, then improve the app with sensor-only and hybrid models when real OT/MPM/PBI or pyrometry data is available."
+    )
 # ---------------------------------------------------------------------------
 # Main app
 # ---------------------------------------------------------------------------

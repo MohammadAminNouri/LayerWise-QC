@@ -1441,6 +1441,9 @@ def _show_validation_roadmap_tab() -> None:
         "and feed-forward advisory control in PBF-LB."
     )
 
+
+
+
 def _show_sample_model_requirements_tab() -> None:
     st.header("Sample / model needs — what to collect and how to train")
 
@@ -1563,35 +1566,35 @@ def _show_sample_model_requirements_tab() -> None:
                 "laser_power_W, scan_speed_mm_s, hatch_spacing_um, layer_thickness_um, spot_size_um, scan_strategy",
                 "measured_density_percent or porosity_percent",
                 "Linear Regression, Random Forest, Gradient Boosting, Gaussian Process",
-                "Shows what can be predicted from raw machine settings only. This is the baseline."
+                "Shows what can be predicted from raw machine settings only. This is the baseline.",
             ],
             [
                 "Model 2 — Physics-informed model",
                 "LED, AED, VED, normalized_VED, hatch_to_spot_ratio, hatch_to_layer_ratio, spot_to_layer_ratio, thermal_diffusion_ratio",
                 "measured_density_percent or porosity_percent",
                 "Random Forest, Gradient Boosting, Gaussian Process, Symbolic Regression",
-                "More explainable model based on energy input, track overlap, and heat-transfer-related descriptors."
+                "More explainable model based on energy input, track overlap, and heat-transfer-related descriptors.",
             ],
             [
                 "Model 3 — Sensor-only model",
                 "thermal_mean, thermal_max, thermal_std, thermal_iqr, thermal_mode, skewness, kurtosis, hotspot_fraction, streakiness, anomalous_layers",
                 "density, porosity, defect class, or pass/fail label",
                 "Random Forest, XGBoost/Gradient Boosting, SVM, simple CNN later if enough images exist",
-                "In-situ monitoring model. Useful when pyrometry, OT, MPM, PBI, or thermal images are available."
+                "In-situ monitoring model. Useful when pyrometry, OT, MPM, PBI, or thermal images are available.",
             ],
             [
                 "Model 4 — Hybrid physics + sensor model",
                 "process parameters + physics-informed features + sensor descriptors",
                 "density, porosity, defect class, or pass/fail label",
                 "Gradient Boosting, XGBoost, Random Forest, Stacking model, Gaussian Process",
-                "Strongest model because it combines process design, physics meaning, and real monitoring data."
+                "Strongest model because it combines process design, physics meaning, and real monitoring data.",
             ],
             [
                 "Model 5 — Pass/fail or defect classification model",
                 "process features, physics features, and sensor features if available",
                 "pass/fail or defect_type such as good, lack_of_fusion, keyhole, crack, failed",
                 "Logistic Regression, Random Forest Classifier, SVM, Gradient Boosting Classifier",
-                "Best first classification model for small datasets. Easier than predicting many defect classes."
+                "Best first classification model for small datasets. Easier than predicting many defect classes.",
             ],
         ],
         columns=["Model", "Inputs needed", "Target/output needed", "ML algorithms", "Purpose"],
@@ -1642,6 +1645,8 @@ def _show_sample_model_requirements_tab() -> None:
     st.success(
         "Practical first goal: train the process-only and physics-informed models first, then improve the app with sensor-only and hybrid models when real OT/MPM/PBI or pyrometry data is available."
     )
+
+
 # ---------------------------------------------------------------------------
 # Main app
 # ---------------------------------------------------------------------------
@@ -1673,6 +1678,7 @@ def main() -> None:
             "sample library",
             "layer history",
             "validation roadmap",
+            "sample/model needs",
         ]
     )
 
@@ -1708,6 +1714,9 @@ def main() -> None:
 
     with tabs[10]:
         _show_validation_roadmap_tab()
+
+    with tabs[11]:
+        _show_sample_model_requirements_tab()
 
 
 if __name__ == "__main__":

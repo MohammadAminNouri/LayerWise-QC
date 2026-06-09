@@ -7,12 +7,15 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from app.ui_kit import inject_global_styles, next_steps_box
+
 from am_defect_detection.data_readiness import (
     audit_dataset_readiness,
     readiness_report_to_markdown,
 )
 
 st.set_page_config(page_title="Dataset Readiness", layout="wide")
+inject_global_styles()
 
 st.title("Dataset Readiness / Real Data Ingestion")
 st.caption("Check whether a manifest is ready for demo, training, or stronger scientific claims.")
@@ -135,3 +138,25 @@ st.download_button(
 with st.expander("Markdown report preview"):
     st.markdown(md)
     
+
+st.subheader("Recommended next actions")
+
+steps = []
+codes = {issue.code for issue in report.issues}
+
+if "missing_build_id" in codes:
+    steps.append("Add build_id so training and testing can be separated by build.")
+if "missing_specimen_id" in codes:
+    steps.append("Add specimen_id so samples from the same specimen do not appear in both train and test.")
+if "missing_split" in codes:
+    steps.append("Add a split column using train, val, and test. Prefer grouped splitting by build_id.")
+if "no_ground_truth" in codes:
+    steps.append("Add independent ground truth such as porosity, density, microscopy result, roughness, or defect type.")
+if "no_sensor_modalities" in codes:
+    steps.append("Add sensor paths when available, such as OT, MPM, PBI, pyrometry, or machine logs.")
+if "missing_spot_size_um" in codes:
+    steps.append("Add spot_size_um or beam diameter when available, because VED alone does not capture beam concentration.")
+if not steps:
+    steps.append("Proceed to feature-table generation and grouped validation.")
+
+next_steps_box(steps)

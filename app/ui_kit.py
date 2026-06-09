@@ -165,3 +165,74 @@ def claim_level_box(level: str, allowed: str, missing: str) -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def section_header(title: str, purpose: str, use_when: str | None = None) -> None:
+    import html
+    use_when_html = ""
+    if use_when:
+        use_when_html = f"<p><strong>Use this section when:</strong> {html.escape(use_when)}</p>"
+    st.markdown(
+        f"""
+<div class="lwq-card">
+  <span class="lwq-label lwq-label-demo">Section guide</span>
+  <h3>{html.escape(title)}</h3>
+  <p><strong>Purpose:</strong> {html.escape(purpose)}</p>
+  {use_when_html}
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def interpretation_box(title: str, means: str, risk: str | None = None, action: str | None = None) -> None:
+    import html
+    risk_html = f"<p><strong>Risk:</strong> {html.escape(risk)}</p>" if risk else ""
+    action_html = f"<p><strong>Recommended action:</strong> {html.escape(action)}</p>" if action else ""
+    st.markdown(
+        f"""
+<div class="lwq-card">
+  <span class="lwq-label lwq-label-training">Interpretation</span>
+  <h3>{html.escape(title)}</h3>
+  <p>{html.escape(means)}</p>
+  {risk_html}
+  {action_html}
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def checklist(items: list[tuple[str, bool, str]]) -> None:
+    import pandas as pd
+    rows = []
+    for name, ok, note in items:
+        rows.append(
+            {
+                "Item": name,
+                "Status": "Ready" if ok else "Needs attention",
+                "Note": note,
+            }
+        )
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
+def next_steps_box(steps: list[str]) -> None:
+    import html
+    lis = "".join(f"<li>{html.escape(s)}</li>" for s in steps)
+    st.markdown(
+        f"""
+<div class="lwq-card">
+  <span class="lwq-label lwq-label-validation">Next steps</span>
+  <h3>Recommended next actions</h3>
+  <ol>{lis}</ol>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def compact_metric_grid(metrics: dict[str, str]) -> None:
+    cols = st.columns(min(4, max(1, len(metrics))))
+    for i, (k, v) in enumerate(metrics.items()):
+        cols[i % len(cols)].metric(k, v)

@@ -33,6 +33,7 @@ PROCESS_COLUMNS = [
     "scan_speed_mm_s",
     "hatch_distance_mm",
     "layer_thickness_mm",
+    "spot_size_um",
 ]
 
 OPTIONAL_STATE_COLUMNS = [
@@ -78,6 +79,7 @@ def process_inputs_from_row(row: pd.Series) -> ProcessInputs:
         layer_thickness_mm=_safe_float(row, "layer_thickness_mm", 0.06),
         heat_memory=_safe_float(row, "heat_memory", 0.35),
         powder_uniformity=_safe_float(row, "powder_uniformity", 0.86),
+        spot_size_um=_safe_float(row, "spot_size_um", 80.0),
     )
 
 

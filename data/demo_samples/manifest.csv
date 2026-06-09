@@ -1,4 +1,4 @@
-sample_id,layer,specimen_id,source_exposure_row,defective_layers,class_idx,class_name,laser_power_w,scan_speed_mm_s,hatch_distance_mm,layer_thickness_mm,ved_j_mm3,ot_path,mpm_path,pbi_path
-L008_S22,8,22,delta_plus_30_ved,2,0,standard,340,1250.0,0.12,0.06,37.78,ot/standard/L008_S22.jpg,mpm/standard/L008_S22.jpg,pbi/standard/L008_S22.jpg
-L009_S14,9,14,delta_minus_30_ved,4,1,delta_minus_30_ved,238,1250.0,0.12,0.06,26.44,ot/delta_minus_30_ved/L009_S14.jpg,mpm/delta_minus_30_ved/L009_S14.jpg,pbi/delta_minus_30_ved/L009_S14.jpg
-L009_S24,9,24,delta_plus_30_ved,4,2,delta_plus_30_ved,370,1046.38,0.12,0.06,49.11,ot/delta_plus_30_ved/L009_S24.jpg,mpm/delta_plus_30_ved/L009_S24.jpg,pbi/delta_plus_30_ved/L009_S24.jpg
+sample_id,layer,specimen_id,source_exposure_row,defective_layers,class_idx,class_name,laser_power_w,scan_speed_mm_s,hatch_distance_mm,layer_thickness_mm,spot_size_um,ved_j_mm3,ot_path,mpm_path,pbi_path
+L008_S22,8,22,delta_plus_30_ved,2,0,standard,340,1250.0,0.12,0.06,80.0,37.78,ot/standard/L008_S22.jpg,mpm/standard/L008_S22.jpg,pbi/standard/L008_S22.jpg
+L009_S14,9,14,delta_minus_30_ved,4,1,delta_minus_30_ved,238,1250.0,0.12,0.06,80.0,26.44,ot/delta_minus_30_ved/L009_S14.jpg,mpm/delta_minus_30_ved/L009_S14.jpg,pbi/delta_minus_30_ved/L009_S14.jpg
+L009_S24,9,24,delta_plus_30_ved,4,2,delta_plus_30_ved,370,1046.38,0.12,0.06,80.0,49.11,ot/delta_plus_30_ved/L009_S24.jpg,mpm/delta_plus_30_ved/L009_S24.jpg,pbi/delta_plus_30_ved/L009_S24.jpg

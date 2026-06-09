@@ -355,6 +355,7 @@ def _modality_scores(inputs: ProcessInputs, modality: str) -> dict[str, float]:
             inputs.layer_thickness_mm,
             heat_memory=min(1.0, inputs.heat_memory + 0.08),
             powder_uniformity=min(1.0, inputs.powder_uniformity + 0.02),
+            spot_size_um=inputs.spot_size_um,
         )
     elif modality == "mpm":
         tuned = ProcessInputs(
@@ -364,6 +365,7 @@ def _modality_scores(inputs: ProcessInputs, modality: str) -> dict[str, float]:
             inputs.layer_thickness_mm,
             heat_memory=min(1.0, inputs.heat_memory + 0.12),
             powder_uniformity=inputs.powder_uniformity,
+            spot_size_um=inputs.spot_size_um,
         )
     elif modality == "pbi":
         tuned = ProcessInputs(
@@ -373,6 +375,7 @@ def _modality_scores(inputs: ProcessInputs, modality: str) -> dict[str, float]:
             inputs.layer_thickness_mm,
             heat_memory=max(0.0, inputs.heat_memory - 0.04),
             powder_uniformity=max(0.0, inputs.powder_uniformity - 0.18),
+            spot_size_um=inputs.spot_size_um,
         )
     else:
         tuned = inputs
@@ -554,12 +557,13 @@ def _plot_sensitivity(inputs: ProcessInputs, second_modality: str, w_ot: float, 
 
     for s in speeds:
         trial = ProcessInputs(
-            inputs.laser_power_w,
-            float(s),
-            inputs.hatch_distance_mm,
-            inputs.layer_thickness_mm,
-            inputs.heat_memory,
-            inputs.powder_uniformity,
+            laser_power_w=inputs.laser_power_w,
+            scan_speed_mm_s=float(s),
+            hatch_distance_mm=inputs.hatch_distance_mm,
+            layer_thickness_mm=inputs.layer_thickness_mm,
+            heat_memory=inputs.heat_memory,
+            powder_uniformity=inputs.powder_uniformity,
+            spot_size_um=inputs.spot_size_um,
         )
         fused = fuse_scores(
             _modality_scores(trial, "ot"),
@@ -667,12 +671,16 @@ These are the machine/process inputs used to calculate VED.
 
 - More **power** usually means more energy.
 - More **speed**, **hatch distance**, or **layer thickness** usually lowers energy density.
+- **Spot size** does not change VED, but it changes beam area and power density.
             """.strip()
         )
         laser_power = st.slider("Laser power P [W]", 180, 430, int(p0.laser_power_w), 1)
         scan_speed = st.slider("Scan speed v [mm/s]", 650, 1700, int(p0.scan_speed_mm_s), 1)
         hatch = st.slider("Hatch distance h [mm]", 0.07, 0.18, float(p0.hatch_distance_mm), 0.005)
         layer = st.slider("Layer thickness t [mm]", 0.02, 0.09, float(p0.layer_thickness_mm), 0.005)
+        spot_size = st.slider("Laser spot size / beam diameter [µm]", 30, 200, int(p0.spot_size_um), 1)
+        if spot_size < 40 or spot_size > 150:
+            st.caption("Note: this spot size is outside the common demo range. That may be valid for a specific machine, but document the source.")
 
     with st.sidebar.expander("2) Process state proxies", expanded=True):
         st.markdown(
@@ -721,7 +729,15 @@ Choose one extra sensor:
         st.info(f"Final score = {w_ot:.2f} × OT + {w_second:.2f} × {second_modality.upper()}")
 
     return ControlState(
-        inputs=ProcessInputs(laser_power, scan_speed, hatch, layer, heat_memory, powder_uniformity),
+        inputs=ProcessInputs(
+            laser_power_w=laser_power,
+            scan_speed_mm_s=scan_speed,
+            hatch_distance_mm=hatch,
+            layer_thickness_mm=layer,
+            heat_memory=heat_memory,
+            powder_uniformity=powder_uniformity,
+            spot_size_um=spot_size,
+        ),
         second_modality=second_modality,
         w_ot=w_ot,
         w_second=w_second,
@@ -852,13 +868,15 @@ def _show_live_decision_tab(state: ControlState) -> None:
     uncertainty, uncertainty_reason = compute_uncertainty(fused, ot_scores, second_scores)
 
     st.subheader("Main result")
-    m1, m2, m3, m4, m5, m6 = st.columns([1.0, 1.0, 1.1, 1.1, 1.0, 1.0])
+    physics_now = compute_physics_features(inputs)
+    m1, m2, m3, m4, m5, m6, m7 = st.columns([1.0, 1.0, 1.0, 1.1, 1.1, 1.0, 1.0])
     m1.metric("VED", f"{inputs.ved:.2f}", "J/mm³", help="Energy density calculated from P/(v×h×t).")
     m2.metric("VED ratio", f"{inputs.ved / STANDARD_VED:.2f}×", help="Current VED divided by the reference VED.")
-    m3.metric("VED rule", _label(rule_state, "short"), help="Simple rule-based state using only VED.")
-    m4.metric("Fused output", _label(fused_state, "short"), help="Final state after combining OT and the second sensor.")
-    m5.metric("Risk index", f"{risk_score:.2f}", badge, help="Low-energy score + high-energy score.")
-    m6.metric("Uncertainty", uncertainty, help="High if sensors disagree or top scores are close.")
+    m3.metric("Power density", f"{physics_now['power_density_w_mm2']:.0f}", "W/mm²", help="Laser power divided by beam area. VED alone does not capture this concentration.")
+    m4.metric("VED rule", _label(rule_state, "short"), help="Simple rule-based state using only VED.")
+    m5.metric("Fused output", _label(fused_state, "short"), help="Final state after combining OT and the second sensor.")
+    m6.metric("Risk index", f"{risk_score:.2f}", badge, help="Low-energy score + high-energy score.")
+    m7.metric("Uncertainty", uncertainty, help="High if sensors disagree or top scores are close.")
 
     _plain_info("Decision in words", f"{_label(fused_state)}. {CLASS_DISPLAY[fused_state]['meaning']}", badge_kind)
     st.caption(f"Uncertainty reason: {uncertainty_reason}")
@@ -1004,7 +1022,7 @@ def _show_physics_features_tab(state: ControlState) -> None:
         "Physics-informed features",
         "Show physically meaningful descriptors used to make the prototype more research-facing.",
         "Current process inputs and demo state variables.",
-        "A table of VED, normalized VED, linear energy, areal energy, geometry ratios, residence-time proxy, and heat-accumulation proxy.",
+        "A table of VED, normalized VED, linear energy, areal energy, beam/spot-size power density, geometry ratios, residence-time proxy, and heat-accumulation proxy.",
         "These features are the bridge between simple process parameters and data-driven modelling. They can be exported and used in ML baselines.",
         "These are simplified descriptors, not a full thermal simulation or finite-element model.",
     )
@@ -1022,8 +1040,9 @@ def _show_physics_features_tab(state: ControlState) -> None:
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Normalized VED", f"{features['normalized_ved']:.2f}", help="1.00 means equal to the reference process.")
     c2.metric("Linear energy", f"{features['linear_energy_j_mm']:.3f} J/mm", help="Laser power divided by scan speed.")
-    c3.metric("Heat accumulation proxy", f"{features['heat_accumulation_index']:.2f}", help="Demo proxy combining VED, heat memory, and powder condition.")
-    c4.metric("Stable-center distance", f"{features['distance_from_stable_center']:.2f}", help="Distance from normalized VED = 1.")
+    c3.metric("Power density", f"{features['power_density_w_mm2']:.0f} W/mm²", help="Laser power divided by beam area from spot size.")
+    c4.metric("Hatch/spot", f"{features['hatch_to_spot_ratio']:.2f}", help="Hatch distance divided by spot diameter; high values imply weaker track overlap.")
+    st.info("VED alone does not capture beam concentration. Spot size changes beam area, power density, track overlap proxies, and therefore melt-pool behaviour even at the same VED.")
 
     st.subheader("Why this matters for research")
     st.info(

@@ -94,6 +94,7 @@ def main() -> None:
                     "scan_speed_mm_s": condition.scan_speed_mm_s,
                     "hatch_distance_mm": condition.hatch_distance_mm,
                     "layer_thickness_mm": condition.layer_thickness_mm,
+                    "spot_size_um": condition.spot_size_um,
                     "ved_j_mm3": round(condition.ved_j_mm3, 2),
                     **paths,
                 }

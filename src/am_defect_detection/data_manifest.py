@@ -22,6 +22,11 @@ MINIMUM_COLUMNS = [
     "ved_j_mm3",
 ]
 
+RECOMMENDED_PROCESS_COLUMNS = [
+    "spot_size_um",
+]
+
+
 RESEARCH_COLUMNS = [
     "build_id",
     "specimen_id",
@@ -133,6 +138,11 @@ def research_readiness_frame(manifest: pd.DataFrame) -> pd.DataFrame:
             "why it matters": "Needed for layer-wise monitoring and history.",
         },
         {
+            "requirement": "laser spot size / beam diameter",
+            "status": "yes" if "spot_size_um" in manifest.columns else "warning: default/unknown",
+            "why it matters": "Needed for beam area, power density, and machine-to-machine comparison beyond VED.",
+        },
+        {
             "requirement": "ground truth density or porosity",
             "status": "yes" if {"relative_density", "porosity_fraction"} & set(manifest.columns) else "no",
             "why it matters": "Needed to move beyond process-condition labels.",
@@ -144,3 +154,20 @@ def research_readiness_frame(manifest: pd.DataFrame) -> pd.DataFrame:
         },
     ]
     return pd.DataFrame(checks)
+
+
+def spot_size_report(manifest: pd.DataFrame) -> pd.DataFrame:
+    """Return a compact report for optional spot-size / beam-diameter values."""
+    if "spot_size_um" not in manifest.columns:
+        return pd.DataFrame([{"item": "spot_size_um", "status": "missing", "message": "Optional column missing; default 80 µm will be assumed only in demo feature generation."}])
+
+    values = pd.to_numeric(manifest["spot_size_um"], errors="coerce")
+    missing = int(values.isna().sum())
+    non_positive = int((values <= 0).sum())
+    outside_typical = int(((values < 30) | (values > 200)).sum())
+    return pd.DataFrame([
+        {"item": "rows", "status": len(manifest), "message": "Rows checked."},
+        {"item": "missing", "status": missing, "message": "Missing spot sizes will use the demo default only when feature generation needs a value."},
+        {"item": "non_positive", "status": non_positive, "message": "Must be zero for a valid manifest."},
+        {"item": "outside_30_200_um", "status": outside_typical, "message": "Warning range only; some machines may legitimately differ."},
+    ])

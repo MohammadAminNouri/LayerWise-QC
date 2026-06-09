@@ -59,6 +59,7 @@ def sample_inputs(rng: np.random.Generator, condition: str) -> ProcessInputs:
 
     hatch = float(np.clip(rng.normal(0.12, 0.008), 0.08, 0.17))
     layer = float(np.clip(rng.normal(0.06, 0.005), 0.03, 0.09))
+    spot = float(np.clip(rng.normal(80.0, 8.0), 55.0, 115.0))
 
     return ProcessInputs(
         laser_power_w=float(np.clip(power, 180, 430)),
@@ -67,6 +68,7 @@ def sample_inputs(rng: np.random.Generator, condition: str) -> ProcessInputs:
         layer_thickness_mm=layer,
         heat_memory=float(np.clip(heat, 0, 1)),
         powder_uniformity=float(np.clip(powder, 0, 1)),
+        spot_size_um=spot,
     )
 
 
@@ -110,6 +112,7 @@ def main():
                         "scan_speed_mm_s": inputs.scan_speed_mm_s,
                         "hatch_distance_mm": inputs.hatch_distance_mm,
                         "layer_thickness_mm": inputs.layer_thickness_mm,
+                        "spot_size_um": inputs.spot_size_um,
                         "heat_memory": inputs.heat_memory,
                         "powder_uniformity": inputs.powder_uniformity,
                         "ved_j_mm3": inputs.ved,

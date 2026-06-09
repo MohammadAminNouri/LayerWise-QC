@@ -171,3 +171,22 @@ pytest -q
 ```
 
 The current tests check the VED calculation and the late-fusion probability logic.
+
+## Spot size / beam-diameter support
+
+The process model now keeps VED but also includes laser spot size / beam diameter through `spot_size_um`.
+VED alone answers how much nominal energy is applied per unit volume, but it does not describe how concentrated that energy is on the powder bed. The code therefore derives:
+
+- `spot_size_mm`
+- `beam_radius_mm`
+- `beam_area_mm2`
+- `power_density_w_mm2`
+- `normalized_spot_size`
+- `normalized_power_density`
+- `spot_overlap_ratio`
+- `hatch_to_spot_ratio`
+- `spot_to_layer_ratio`
+- `power_density_x_residence_proxy`
+- `ved_x_power_density`
+
+Existing manifests remain compatible. If `spot_size_um` is missing, feature generation assumes the demo reference value of 80 µm and reports the limitation through the manifest/readiness utilities. For real experiments, the value should come from the machine configuration, calibration report, or the cited paper/dataset.

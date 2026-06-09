@@ -13,7 +13,7 @@ from typing import Dict, Tuple
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-from .constants import CLASS_NAMES, CLASS_TO_IDX
+from .constants import CLASS_NAMES, CLASS_TO_IDX, REFERENCE_SPOT_SIZE_UM
 
 
 @dataclass(frozen=True)
@@ -24,10 +24,19 @@ class ProcessInputs:
     layer_thickness_mm: float = 0.06
     heat_memory: float = 0.35
     powder_uniformity: float = 0.82
+    spot_size_um: float = REFERENCE_SPOT_SIZE_UM
 
     @property
     def ved(self) -> float:
+        if self.scan_speed_mm_s <= 0 or self.hatch_distance_mm <= 0 or self.layer_thickness_mm <= 0:
+            raise ValueError("Scan speed, hatch distance, and layer thickness must be positive.")
         return self.laser_power_w / (self.scan_speed_mm_s * self.hatch_distance_mm * self.layer_thickness_mm)
+
+    @property
+    def spot_size_mm(self) -> float:
+        if self.spot_size_um <= 0:
+            raise ValueError("Spot size must be positive.")
+        return self.spot_size_um / 1000.0
 
 
 def classify_from_ved(ved: float, standard_ved: float = 37.78, dead_band: float = 0.18) -> str:
@@ -51,9 +60,33 @@ def soft_process_scores(inputs: ProcessInputs, standard_ved: float = 37.78) -> D
     uniformity into class-like scores so the user can see how the logic moves.
     """
     ratio = inputs.ved / standard_ved
-    low = max(0.0, 1.0 - ratio) * 2.4 + max(0.0, 0.72 - inputs.powder_uniformity) * 1.4
-    high = max(0.0, ratio - 1.0) * 2.1 + max(0.0, inputs.heat_memory - 0.62) * 0.9
+    spot_size_mm = max(inputs.spot_size_um / 1000.0, 1e-9)
+    beam_area_mm2 = np.pi * (spot_size_mm / 2.0) ** 2
+    power_density_w_mm2 = inputs.laser_power_w / beam_area_mm2
+    reference_power_density = 340.0 / (np.pi * (0.08 / 2.0) ** 2)
+    power_density_ratio = power_density_w_mm2 / reference_power_density
+    hatch_to_spot_ratio = inputs.hatch_distance_mm / spot_size_mm
+
+    # Spot size is deliberately a gentle correction, not a validated melt-pool model.
+    # Large hatch/spot ratio weakens track overlap and raises lack-of-fusion risk.
+    # Small spot/high power density raises keyhole-spatter risk even at similar VED.
+    overlap_penalty = max(0.0, hatch_to_spot_ratio - 1.65) * 0.35
+    broad_low_power_penalty = max(0.0, 1.0 - power_density_ratio) * max(0.0, spot_size_mm / 0.08 - 1.0) * 0.35
+    concentrated_power_penalty = max(0.0, power_density_ratio - 1.0) * 0.25
+
+    low = (
+        max(0.0, 1.0 - ratio) * 2.4
+        + max(0.0, 0.72 - inputs.powder_uniformity) * 1.4
+        + overlap_penalty
+        + broad_low_power_penalty
+    )
+    high = (
+        max(0.0, ratio - 1.0) * 2.1
+        + max(0.0, inputs.heat_memory - 0.62) * 0.9
+        + concentrated_power_penalty
+    )
     std = 1.15 - abs(ratio - 1.0) * 1.7 + (inputs.powder_uniformity - 0.5) * 0.25
+    std -= 0.12 * max(0.0, abs(power_density_ratio - 1.0) - 0.25)
     raw = np.array([std, low, high], dtype=np.float64)
     raw = np.exp(raw - raw.max())
     probs = raw / raw.sum()

@@ -1,0 +1,3 @@
+record_id,source_id,citation,doi,material,alloy,machine,process,laser_power_w,scan_speed_mm_s,hatch_distance_mm,layer_thickness_mm,spot_size_um,beam_diameter_um,energy_density_j_mm3,relative_density_pct,porosity_pct,surface_roughness_um,tensile_strength_mpa,elongation_pct,defect_type,quality_label,notes
+example_001,open_example,"Replace with full citation",10.xxxx/example,metal,316L,unknown,LPBF,200,800,0.10,0.03,80,,83.33,99.5,0.3,,,,,standard,"Template row only; replace with cited paper data."
+example_002,open_example,"Replace with full citation",10.xxxx/example,metal,316L,unknown,LPBF,120,1200,0.12,0.04,,,20.83,97.5,2.5,,,,lack of fusion,,"Weak label should infer low-energy risk."

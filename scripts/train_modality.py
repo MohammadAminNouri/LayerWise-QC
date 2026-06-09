@@ -20,6 +20,9 @@ from am_defect_detection.data import (  # noqa: E402
     ModalityDataset,
     build_weighted_sampler,
     load_split_or_create,
+    make_grouped_splits,
+    save_splits,
+    read_manifest,
 )
 from am_defect_detection.metrics import compute_metrics  # noqa: E402
 from am_defect_detection.models import build_resnet18  # noqa: E402
@@ -46,6 +49,7 @@ def main() -> None:
     parser.add_argument("--no-pretrained", action="store_true")
     parser.add_argument("--num-workers", type=int, default=2)
     parser.add_argument("--root", type=Path, default=None, help="Base directory for relative image paths. Defaults to manifest parent.")
+    parser.add_argument("--group-col", type=str, default=None, help="Optional group column for leakage-safe train/val/test splits.")
     args = parser.parse_args()
 
     seed_everything(args.seed)
@@ -53,7 +57,17 @@ def main() -> None:
     root = args.root or args.manifest.parent
     device = device_from_arg(args.device)
 
-    splits = load_split_or_create(args.manifest, out, seed=args.seed)
+    if args.group_col:
+        grouped = make_grouped_splits(read_manifest(args.manifest), group_col=args.group_col, seed=args.seed)
+        from am_defect_detection.data import SplitFrames
+        splits = SplitFrames(
+            train=grouped[grouped["split"] == "train"].reset_index(drop=True),
+            val=grouped[grouped["split"] == "val"].reset_index(drop=True),
+            test=grouped[grouped["split"] == "test"].reset_index(drop=True),
+        )
+        save_splits(splits, out)
+    else:
+        splits = load_split_or_create(args.manifest, out, seed=args.seed)
     patch_size = PATCH_SIZES_HW.get(args.modality, (224, 224))
 
     train_ds = ModalityDataset(splits.train, modality=args.modality, root=root, train=True, patch_size_hw=patch_size)

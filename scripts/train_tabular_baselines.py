@@ -49,10 +49,11 @@ import pandas as pd
 
 from sklearn.compose import ColumnTransformer
 from sklearn.dummy import DummyClassifier, DummyRegressor
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, HistGradientBoostingClassifier, HistGradientBoostingRegressor
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, GradientBoostingClassifier, GradientBoostingRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.metrics import (
+    matthews_corrcoef,
     accuracy_score,
     balanced_accuracy_score,
     classification_report,
@@ -80,7 +81,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--group-col", default=None, help="Prefer build_id or specimen_id to avoid leakage.")
     parser.add_argument("--test-size", type=float, default=0.25)
     parser.add_argument("--random-state", type=int, default=42)
-    parser.add_argument("--out-dir", required=True)
+    parser.add_argument("--out-dir", "--out", dest="out_dir", required=True)
     return parser.parse_args()
 
 
@@ -140,27 +141,23 @@ def make_models(task: str, random_state: int) -> dict[str, Any]:
             "dummy_most_frequent": DummyClassifier(strategy="most_frequent"),
             "logistic_regression": LogisticRegression(max_iter=5000, class_weight="balanced"),
             "random_forest": RandomForestClassifier(
-                n_estimators=300,
+                n_estimators=100,
                 random_state=random_state,
                 class_weight="balanced",
                 min_samples_leaf=2,
             ),
-            "hist_gradient_boosting": HistGradientBoostingClassifier(
-                random_state=random_state,
-            ),
+            "gradient_boosting": GradientBoostingClassifier(random_state=random_state),
         }
 
     return {
         "dummy_mean": DummyRegressor(strategy="mean"),
         "ridge": Ridge(alpha=1.0),
         "random_forest": RandomForestRegressor(
-            n_estimators=300,
+            n_estimators=100,
             random_state=random_state,
             min_samples_leaf=2,
         ),
-        "hist_gradient_boosting": HistGradientBoostingRegressor(
-            random_state=random_state,
-        ),
+        "gradient_boosting": GradientBoostingRegressor(random_state=random_state),
     }
 
 
@@ -170,6 +167,7 @@ def evaluate_classification(y_true, y_pred) -> dict[str, Any]:
         "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
         "macro_f1": float(f1_score(y_true, y_pred, average="macro")),
         "weighted_f1": float(f1_score(y_true, y_pred, average="weighted")),
+        "matthews_corrcoef": float(matthews_corrcoef(y_true, y_pred)),
         "classification_report": classification_report(y_true, y_pred, output_dict=True, zero_division=0),
         "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
     }
@@ -213,6 +211,7 @@ def main() -> None:
     }
 
     predictions_rows = []
+    importance_rows = []
 
     for group_name, feature_cols in groups.items():
         feature_cols = [col for col in feature_cols if col in df.columns]
@@ -228,6 +227,10 @@ def main() -> None:
         models = make_models(args.task, args.random_state)
 
         for model_name, estimator in models.items():
+            if args.task == "classification" and model_name != "dummy_most_frequent" and y_train.nunique() < 2:
+                print(f"Skipping {group_name}__{model_name}: training split has fewer than 2 classes.")
+                continue
+
             pipe = Pipeline(
                 steps=[
                     ("preprocess", numeric_preprocessor(feature_cols)),
@@ -267,6 +270,20 @@ def main() -> None:
                     }
                 )
 
+            # Feature importance when the final estimator exposes it.
+            final_model = pipe.named_steps["model"]
+            importances = getattr(final_model, "feature_importances_", None)
+            coefs = getattr(final_model, "coef_", None)
+            if importances is not None:
+                for feature, value in zip(feature_cols, importances):
+                    importance_rows.append({"run": key, "feature": feature, "importance": float(value)})
+            elif coefs is not None:
+                values = np.asarray(coefs)
+                if values.ndim > 1:
+                    values = np.mean(np.abs(values), axis=0)
+                for feature, value in zip(feature_cols, values):
+                    importance_rows.append({"run": key, "feature": feature, "importance": float(abs(value))})
+
             print(f"Finished {key}")
 
     metrics_path = out_dir / "metrics.json"
@@ -275,6 +292,9 @@ def main() -> None:
 
     pred_path = out_dir / "predictions.csv"
     pd.DataFrame(predictions_rows).to_csv(pred_path, index=False)
+
+    importance_path = out_dir / "feature_importance.csv"
+    pd.DataFrame(importance_rows).to_csv(importance_path, index=False)
 
     # Compact leaderboard
     leaderboard_rows = []
@@ -292,6 +312,8 @@ def main() -> None:
                     "balanced_accuracy": metrics["balanced_accuracy"],
                     "macro_f1": metrics["macro_f1"],
                     "accuracy": metrics["accuracy"],
+                    "matthews_corrcoef": metrics["matthews_corrcoef"],
+                    "weighted_f1": metrics["weighted_f1"],
                 }
             )
         else:
@@ -312,6 +334,7 @@ def main() -> None:
 
     print(f"Wrote metrics: {metrics_path}")
     print(f"Wrote predictions: {pred_path}")
+    print(f"Wrote feature importance: {importance_path}")
     print(f"Wrote leaderboard: {out_dir / 'leaderboard.csv'}")
 
 

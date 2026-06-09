@@ -26,7 +26,7 @@ from am_defect_detection.feature_table import build_feature_table, infer_feature
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", required=True, help="Path to manifest CSV.")
-    parser.add_argument("--image-root", required=True, help="Root directory for relative image paths.")
+    parser.add_argument("--image-root", "--root", dest="image_root", required=True, help="Root directory for relative image paths.")
     parser.add_argument("--out", required=True, help="Output feature-table CSV path.")
     parser.add_argument(
         "--no-sensor-descriptors",

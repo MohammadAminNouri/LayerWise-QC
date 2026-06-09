@@ -1,3 +1,25 @@
+Metadata-Version: 2.4
+Name: am-insitu-quality-control
+Version: 0.1.0
+Summary: Multimodal in-situ defect detection for laser powder bed fusion using OT and MPM/PBI images.
+Author: Mohammadamin Nouri Uoshanloei
+License: MIT
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: torch>=2.0.0
+Requires-Dist: torchvision>=0.15.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: pandas>=2.0.0
+Requires-Dist: scikit-learn>=1.3.0
+Requires-Dist: Pillow>=10.0.0
+Requires-Dist: matplotlib>=3.7.0
+Requires-Dist: opencv-python>=4.8.0
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: tqdm>=4.65.0
+Requires-Dist: streamlit>=1.32.0
+Dynamic: license-file
+
 
 ![CI](https://github.com/MohammadAminNouri/LayerWise-QC/actions/workflows/ci.yml/badge.svg)
 

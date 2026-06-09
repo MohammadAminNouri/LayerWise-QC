@@ -150,3 +150,62 @@ def load_split_or_create(
     splits = make_splits(df, seed=seed)
     save_splits(splits, out_dir)
     return splits
+
+
+def check_group_leakage(df: pd.DataFrame, group_col: str, split_col: str = "split") -> dict:
+    """Return groups that appear in more than one split."""
+    if group_col not in df.columns:
+        raise ValueError(f"Missing group column: {group_col}")
+    if split_col not in df.columns:
+        raise ValueError(f"Missing split column: {split_col}")
+    leaked: dict[str, list[str]] = {}
+    for group, g in df.groupby(group_col, dropna=True):
+        splits = sorted(set(g[split_col].dropna().astype(str)))
+        if len(splits) > 1:
+            leaked[str(group)] = splits
+    return {"ok": len(leaked) == 0, "n_leaked_groups": len(leaked), "leaked_groups": leaked}
+
+
+def make_grouped_splits(
+    manifest: pd.DataFrame,
+    group_col: str = "build_id",
+    label_col: str = "class_name",
+    train_size: float = 0.70,
+    val_size: float = 0.15,
+    test_size: float = 0.15,
+    seed: int = 42,
+) -> pd.DataFrame:
+    """Assign train/val/test splits while keeping each group in only one split.
+
+    This uses a deterministic greedy assignment that tries to maintain the target
+    split sizes. It is intentionally dependency-light and works on small AM
+    datasets where scikit stratified-group split can be fragile.
+    """
+    if group_col not in manifest.columns:
+        raise ValueError(f"Cannot make grouped split; missing group column: {group_col}")
+    if not np.isclose(train_size + val_size + test_size, 1.0):
+        raise ValueError("train_size + val_size + test_size must equal 1.0")
+
+    df = manifest.copy().reset_index(drop=True)
+    groups = list(df.groupby(group_col, dropna=False).groups.keys())
+    rng = np.random.default_rng(seed)
+    rng.shuffle(groups)
+    group_sizes = {g: int((df[group_col] == g).sum()) for g in groups}
+    groups = sorted(groups, key=lambda g: group_sizes[g], reverse=True)
+
+    targets = {"train": train_size * len(df), "val": val_size * len(df), "test": test_size * len(df)}
+    assigned = {"train": 0, "val": 0, "test": 0}
+    group_to_split: dict[object, str] = {}
+
+    for group in groups:
+        size = group_sizes[group]
+        # Choose the split with largest remaining capacity; protects tiny splits.
+        split = max(targets, key=lambda s: targets[s] - assigned[s])
+        group_to_split[group] = split
+        assigned[split] += size
+
+    df["split"] = df[group_col].map(group_to_split)
+    leakage = check_group_leakage(df, group_col=group_col, split_col="split")
+    if not leakage["ok"]:
+        raise RuntimeError(f"Grouped split failed leakage check: {leakage}")
+    return df
